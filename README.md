@@ -14,7 +14,7 @@ sudo apt install -y nodejs
 1. Clone this repository to your local machine:
 
    ```bash
-   git clone https://github.com/dante4rt/getgrass-bot.git
+   git clone https://github.com/muzilicheng/getgrass-bot
    ```
 
 2. Navigate to the project directory:
