@@ -12,15 +12,13 @@ const { delay, displayHeader } = require('./src/utils');
 async function main() {
   displayHeader();
   console.log(`Please wait...\n`.yellow);
-
   await delay(1000);
 
   const config = new Config();
   const bot = new Bot(config);
-
   const proxySource = await selectProxySource(inquirer);
-
   let proxies = [];
+
   if (proxySource.type === 'file') {
     proxies = await readLines(proxySource.source);
   } else if (proxySource.type === 'url') {
@@ -48,12 +46,28 @@ async function main() {
 
   console.log(`Loaded ${userIDs.length} user IDs\n`.green);
 
-  const connectionPromises = userIDs.flatMap((userID) =>
-    proxySource.type !== 'none'
-      ? proxies.map((proxy) => bot.connectToProxy(proxy, userID))
-      : [bot.connectDirectly(userID)]
-  );
+  // Create an array of promises for each userID
+  const connectionPromises = userIDs.map((userID) => {
+    // Determine the number of proxies to use for this userID
+    const numProxiesToUse = Math.min(20, proxies.length);
+    // Take the first numProxiesToUse proxies from the array
+    const proxiesToUse = proxies.slice(0, numProxiesToUse);
+    // Update the proxies array to remove the used proxies
+    proxies = proxies.slice(numProxiesToUse);
 
+    // Create an array of promises for connecting to each proxy
+    const promisesForUserID = proxiesToUse.map((proxy) => bot.connectToProxy(proxy, userID));
+
+    // If no proxies were used (direct connection mode), add a promise for direct connection
+    if (numProxiesToUse === 0) {
+      promisesForUserID.push(bot.connectDirectly(userID));
+    }
+
+    // Return the array of promises for this userID
+    return Promise.all(promisesForUserID);
+  });
+
+  // Wait for all promises to resolve
   await Promise.all(connectionPromises);
 }
 
